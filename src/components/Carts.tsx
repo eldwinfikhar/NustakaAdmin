@@ -1,112 +1,129 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { ApiCartItem } from '../interfaces/cart';
+import { fetchCartItems, deleteCartItem } from '../services/cartService';
 
-interface Cart {
-  id: string;
-  buyer_id: string;
-  products: string[];
-}
+const formatCartDate = (dateInput: string | { _seconds: number, _nanoseconds: number }): string => {
+  if (typeof dateInput === 'string') {
+    const date = new Date(dateInput);
+    if (!isNaN(date.getTime())) {
+      return new Intl.DateTimeFormat('id-ID', { year: 'numeric', month: 'long', day: 'numeric' }).format(date);
+    }
+  } else if (dateInput && typeof dateInput._seconds === 'number') {
+    const date = new Date(dateInput._seconds * 1000);
+    return new Intl.DateTimeFormat('id-ID', { year: 'numeric', month: 'long', day: 'numeric' }).format(date);
+  }
+  return 'Invalid date';
+};
+
+const formatCartPrice = (price: number) => {
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0
+  }).format(price);
+};
 
 export default function Carts() {
-  const [carts, setCarts] = useState<Cart[]>([
-    { 
-      id: '1', 
-      buyer_id: '2',
-      products: ['Lombok Pottery', 'Balinese Wood Carving'], 
-    },
-    { 
-      id: '2', 
-      buyer_id: '4',
-      products: ['Lombok Pottery', 'Balinese Wood Carving'], 
-    }
-  ]);
-
-  // Search functionality
+  const [cartItems, setCartItems] = useState<ApiCartItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  const handleDelete = (id: string) => {
-    if (confirm('Delete this cart?')) {
-      setCarts(carts.filter(cart => cart.id !== id));
+  useEffect(() => {
+    const loadCartItems = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await fetchCartItems();
+        setCartItems(response.data);
+      } catch (err: any) {
+        setError(err.message || 'Failed to load cart items');
+        setCartItems([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadCartItems();
+  }, []);
+
+  const handleDelete = async (cartItemId: string) => {
+    if (confirm('Delete this cart item?')) {
+      try {
+        await deleteCartItem(cartItemId);
+        setCartItems(prevItems => prevItems.filter(item => item.id !== cartItemId));
+        alert('Cart item deleted successfully.');
+      } catch (err: any) {
+        alert('Failed to delete cart item: ' + (err.message || 'Unknown error'));
+      }
     }
   };
 
-  // Filter orders based on search
-  const filteredCarts = carts.filter(cart => 
-    cart.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    cart.buyer_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    cart.products.some(product => product.toLowerCase().includes(searchTerm.toLowerCase()))
+  const filteredCartItems = cartItems.filter(item =>
+    item.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.cart_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.product_id.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Format price to IDR
-  // const formatPrice = (price: number) => {
-  //   return new Intl.NumberFormat('id-ID', {
-  //     style: 'currency',
-  //     currency: 'IDR',
-  //     minimumFractionDigits: 0
-  //   }).format(price);
-  // };
-
-  // Format date
-  // const formatDate = (dateString: string) => {
-  //   const date = new Date(dateString);
-  //   return new Intl.DateTimeFormat('id-ID', {
-  //     year: 'numeric',
-  //     month: 'long',
-  //     day: 'numeric'
-  //   }).format(date);
-  // };
+  if (loading) return <div className="p-4 text-center">Loading cart items...</div>;
+  if (error) return <div className="p-4 text-center text-red-600">Error: {error}</div>;
 
   return (
     <div className="p-4">
       <h1 className="text-2xl font-bold mb-4">Carts</h1>
       
-      {/* Search bar */}
       <div className="mb-4">
         <input
           type="text"
-          placeholder="Search carts..."
-          className="border rounded px-3 py-2 w-64"
+          placeholder="Search by Item ID, Cart ID, Product ID..."
+          className="border rounded px-3 py-2 w-full md:w-1/3"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
       </div>
       
-      <table className="min-w-full bg-white rounded-lg overflow-hidden">
-        <thead className="bg-gray-200">
-          <tr>
-            <th className="py-2 px-4 text-left">ID</th>
-            <th className="py-2 px-4 text-left">Buyer ID</th>
-            <th className="py-2 px-4 text-left">Products</th>
-            <th className="py-2 px-4 text-left">Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredCarts.map((cart) => (
-            <tr key={cart.id} className="border-b">
-              <td className="py-2 px-4 font-medium">{cart.id}</td>
-              <td className="py-2 px-4 font-medium">{cart.buyer_id}</td>
-              <td className="py-2 px-4">
-                <ul className="list-disc ml-4">
-                  {cart.products.map((product, index) => (
-                    <li key={index} className="text-sm">{product}</li>
-                  ))}
-                </ul>
-              </td>
-              <td className="py-2 px-4">
-                <button 
-                  onClick={() => handleDelete(cart.id)}
-                  className="bg-red-500 text-white py-1 px-3 rounded hover:bg-red-600"
-                >
-                  Delete
-                </button>
-              </td>
+      <div className="overflow-x-auto">
+        <table className="min-w-full bg-white rounded-lg overflow-hidden shadow">
+          <thead className="bg-gray-200">
+            <tr>
+              <th className="py-3 px-4 text-left text-sm font-semibold text-gray-700">Item ID</th>
+              <th className="py-3 px-4 text-left text-sm font-semibold text-gray-700">Cart ID (Buyer/User ID)</th>
+              <th className="py-3 px-4 text-left text-sm font-semibold text-gray-700">Product ID</th>
+              <th className="py-3 px-4 text-left text-sm font-semibold text-gray-700">Quantity</th>
+              <th className="py-3 px-4 text-left text-sm font-semibold text-gray-700">Price/Item</th>
+              <th className="py-3 px-4 text-left text-sm font-semibold text-gray-700">Total Price</th>
+              <th className="py-3 px-4 text-left text-sm font-semibold text-gray-700">Added At</th>
+              <th className="py-3 px-4 text-left text-sm font-semibold text-gray-700">Action</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {filteredCartItems.map((item) => (
+              <tr key={item.id} className="hover:bg-gray-50">
+                <td className="py-3 px-4 text-sm text-gray-700 break-all">{item.id}</td>
+                <td className="py-3 px-4 text-sm text-gray-700">{item.cart_id}</td>
+                <td className="py-3 px-4 text-sm text-gray-700">
+                  {item.product_id}
+                </td>
+                <td className="py-3 px-4 text-sm text-gray-700">{item.quantity}</td>
+                <td className="py-3 px-4 text-sm text-gray-700">{formatCartPrice(item.price_per_item)}</td>
+                <td className="py-3 px-4 text-sm font-medium text-gray-900">{formatCartPrice(item.price_per_item * item.quantity)}</td>
+                <td className="py-3 px-4 text-sm text-gray-700">{formatCartDate(item.added_at)}</td>
+                <td className="py-3 px-4 text-sm">
+                  <button 
+                    onClick={() => handleDelete(item.id)}
+                    className="bg-red-500 text-white py-1 px-3 rounded hover:bg-red-600 text-xs"
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       
-      {filteredCarts.length === 0 && (
+      {filteredCartItems.length === 0 && !loading && (
         <div className="text-center py-8 text-gray-500">
-          No carts found matching your search
+          No cart items found.
         </div>
       )}
     </div>

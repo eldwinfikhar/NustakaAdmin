@@ -1,33 +1,26 @@
-// src/pages/LoginPage.tsx
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { login } from '../services/authService';
+import { useAuth } from '../contexts/AuthContext'; 
+import { login as loginService } from '../services/authService';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const navigate = useNavigate();
+  const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-
     try {
-      const { token, user } = await login(email, password);
+      const { token, user } = await loginService(email, password);
 
       if (user.role !== 'admin') {
         setError('You are not an admin');
         return;
       }
+      
+      login(token, user);
 
-      // Simpan token & info user
-      localStorage.setItem('token', token);
-      // (Opsional) simpan user object juga
-      localStorage.setItem('user', JSON.stringify(user));
-
-      // Redirect ke dashboard
-      navigate('/', { replace: true });
     } catch (err: any) {
       setError(err.response?.data?.message || err.message);
     }

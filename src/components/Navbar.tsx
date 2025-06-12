@@ -1,5 +1,23 @@
+import { useNavigate } from "react-router-dom";
+import * as authService from "../services/authService";
+
 export default function Navbar() {
-    return (
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+
+    navigate("/login", { replace: true });
+
+    try {
+      await authService.logout();
+    } catch (error) {
+      console.error('Logout failed on server:', error);
+    }
+  };
+
+  return (
       <nav className="bg-accent text-white shadow-lg">
         <div className="container mx-auto p-4 flex items-center">
           <img
@@ -14,11 +32,11 @@ export default function Navbar() {
             <a href="/products" className="hover:underline">Products</a>
             <a href="/orders" className="hover:underline">Orders</a>
             <a href="/carts" className="hover:underline">Carts</a>
-            <button className="bg-primary hover:bg-amber-900 px-4 py-1 rounded">
+            <button onClick={handleLogout} className="bg-primary hover:bg-amber-900 px-4 py-1 rounded">
               Logout
             </button>
           </div>
         </div>
       </nav>
     );
-  }
+};

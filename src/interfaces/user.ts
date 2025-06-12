@@ -1,4 +1,3 @@
-// Timestamp dari Firestore bisa diwakili sebagai string atau number di FE
 export interface UserWithId {
     id: string;
     username: string;
@@ -7,9 +6,6 @@ export interface UserWithId {
     address: string;
     role: 'buyer' | 'seller' | 'admin';
     status?: 'active' | 'inactive' | 'banned';
-    created_at?: string;   // ISO string atau Firestore Timestamp as string
+    created_at?: string;
     updated_at?: string;
   }
-
-  
-  

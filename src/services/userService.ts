@@ -1,6 +1,5 @@
-// src/services/userService.ts
 import api from '../utils/api';
-import { UserWithId } from '../interfaces';
+import { UserWithId } from '../interfaces/user';
 
 export const fetchUsers = async (): Promise<UserWithId[]> => {
   const { data } = await api.get<UserWithId[]>('/users');

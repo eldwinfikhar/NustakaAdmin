@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { fetchUsers, deleteUser } from '../services/userService';
-import { UserWithId } from '../interfaces';
+import { UserWithId } from '../interfaces/user';
 
 export default function Users() {
   const [users, setUsers] = useState<UserWithId[]>([]);
@@ -25,14 +25,16 @@ export default function Users() {
     }
   };
 
-  const filteredUsers = users.filter((user) =>
-    user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.phone_number.includes(searchTerm)
-  );
+  const filteredUsers = users.filter((user) => {
+    const term = searchTerm.toLowerCase();
+    const usernameMatch = user.username ? user.username.toLowerCase().includes(term) : false;
+    const emailMatch = user.email ? user.email.toLowerCase().includes(term) : false;
+    const addressMatch = user.address ? user.address.toLowerCase().includes(term) : false;
+    const phoneMatch = user.phone_number ? user.phone_number.includes(searchTerm) : false;
+    return usernameMatch || emailMatch || addressMatch || phoneMatch;
+  });
 
-  if (loading) return <div>Loading users...</div>;
+  if (loading) return <div className="p-4 text-center">Loading users...</div>;
   if (error) return <div className="text-red-600">Error: {error}</div>;
 
   return (
